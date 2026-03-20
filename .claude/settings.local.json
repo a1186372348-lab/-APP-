@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(echo === $dir ===:*)",
+      "Bash(git:*)",
+      "mcp__codex__codex",
+      "mcp__codex__codex-reply",
+      "Bash(dir C:\\\\Users\\\\Administrator\\\\project:*)",
+      "Bash(tail:*)",
+      "Bash(cat:*)"
+    ]
+  }
+}
