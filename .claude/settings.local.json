@@ -7,7 +7,9 @@
       "mcp__codex__codex-reply",
       "Bash(dir C:\\\\Users\\\\Administrator\\\\project:*)",
       "Bash(tail:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(rm:*)",
+      "Bash(cd:*)"
     ]
   }
 }
