@@ -28,9 +28,10 @@ const CHANNEL_ICONS: Record<string, string> = {
 };
 
 export default function SettingsScreen() {
-  const { user, logout } = useAuthStore();
+  const { user, logout, cancelPremium } = useAuthStore();
   const [bindings, setBindings] = useState<ChannelBinding[]>([]);
   const [bindingChannel, setBindingChannel] = useState<string | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   useEffect(() => {
     loadBindings();
@@ -73,6 +74,31 @@ export default function SettingsScreen() {
           onPress: async () => {
             await channelsApi.unbind(channel);
             setBindings((prev) => prev.filter((b) => b.channel !== channel));
+          },
+        },
+      ]
+    );
+  };
+
+  const handleCancelPremium = () => {
+    Alert.alert(
+      '取消订阅',
+      '取消后将立即恢复免费版，AI 分析功能将无法使用，确定吗？',
+      [
+        { text: '再想想', style: 'cancel' },
+        {
+          text: '确定取消',
+          style: 'destructive',
+          onPress: async () => {
+            setIsCancelling(true);
+            try {
+              await cancelPremium();
+              Alert.alert('已取消订阅', '你已恢复免费版，感谢使用花生记账。');
+            } catch {
+              Alert.alert('操作失败', '请稍后重试');
+            } finally {
+              setIsCancelling(false);
+            }
           },
         },
       ]
@@ -128,14 +154,35 @@ export default function SettingsScreen() {
       </View>
 
       {/* 订阅管理 */}
-      {user?.subscriptionTier !== 'premium' && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>订阅 Premium</Text>
-          <TouchableOpacity style={styles.upgradeBtn}>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>订阅管理</Text>
+        {user?.subscriptionTier === 'premium' ? (
+          <View style={styles.premiumStatus}>
+            <View style={styles.premiumStatusRow}>
+              <Text style={styles.premiumStatusIcon}>🌟</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.premiumStatusTitle}>Premium 会员</Text>
+                <Text style={styles.premiumStatusDesc}>所有 AI 分析功能已解锁</Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              style={styles.cancelBtn}
+              onPress={handleCancelPremium}
+              disabled={isCancelling}
+            >
+              {isCancelling ? (
+                <ActivityIndicator size="small" color="#888" />
+              ) : (
+                <Text style={styles.cancelBtnText}>取消订阅</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity style={styles.upgradeBtn} onPress={() => {}}>
             <Text style={styles.upgradeBtnText}>解锁 AI 财务分析 →</Text>
           </TouchableOpacity>
-        </View>
-      )}
+        )}
+      </View>
 
       {/* 其他 */}
       <View style={styles.section}>
@@ -198,6 +245,28 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   upgradeBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  premiumStatus: { gap: 12 },
+  premiumStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#FFF4EC',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#FFD4A8',
+  },
+  premiumStatusIcon: { fontSize: 24 },
+  premiumStatusTitle: { fontSize: 15, fontWeight: '700', color: '#FF8C42' },
+  premiumStatusDesc: { fontSize: 13, color: '#888', marginTop: 2 },
+  cancelBtn: {
+    borderRadius: 10,
+    padding: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E0D0C8',
+  },
+  cancelBtnText: { fontSize: 14, color: '#888' },
   menuItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',

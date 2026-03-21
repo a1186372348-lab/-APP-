@@ -94,6 +94,20 @@ export const channelsApi = {
   unbind: (channel: string) => apiClient.delete(`/channels/${channel}/binding`),
 };
 
+// ──── Subscriptions ────
+
+export const subscriptionsApi = {
+  getStatus: () =>
+    apiClient.get<{ subscriptionTier: 'free' | 'premium'; activeSubscription: SubscriptionInfo | null }>('/subscriptions/status'),
+  mockPurchase: (productId: string) =>
+    apiClient.post<{ success: boolean; subscriptionTier: 'premium'; productId: string; expiresAt: number }>(
+      '/subscriptions/mock-purchase',
+      { productId, platform: 'mock' }
+    ),
+  mockCancel: () =>
+    apiClient.delete<{ success: boolean; subscriptionTier: 'free' }>('/subscriptions/mock-cancel'),
+};
+
 // ──── Types ────
 
 export interface UserProfile {
@@ -174,4 +188,13 @@ export interface ChannelBinding {
   channelUserId: string;
   isActive: number;
   boundAt: number;
+}
+
+export interface SubscriptionInfo {
+  id: string;
+  productId: string;
+  entitlement: string;
+  isActive: number;
+  expiresAt: number | null;
+  platform: string;
 }

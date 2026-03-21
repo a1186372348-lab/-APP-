@@ -7,6 +7,7 @@ import { categoriesRoute } from './routes/categories';
 import { channelsRoute } from './routes/channels';
 import { aiRoute } from './routes/ai';
 import { authRoute } from './routes/auth';
+import { subscriptionsRoute } from './routes/subscriptions';
 import { wechatBotRoute } from './bots/wechat';
 import { feishuBotRoute } from './bots/feishu';
 import { dingtalkBotRoute } from './bots/dingtalk';
@@ -40,6 +41,7 @@ app.register(transactionsRoute, { prefix: '/transactions' });
 app.register(categoriesRoute, { prefix: '/categories' });
 app.register(channelsRoute, { prefix: '/channels' });
 app.register(aiRoute, { prefix: '/ai' });
+app.register(subscriptionsRoute, { prefix: '/subscriptions' });
 
 // Bot Webhooks
 app.register(wechatBotRoute, { prefix: '/webhooks/wechat' });

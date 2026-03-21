@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { UserProfile, authApi, setAuthToken } from '../api/client';
+import { UserProfile, authApi, subscriptionsApi, setAuthToken } from '../api/client';
 
 interface AuthState {
   token: string | null;
@@ -13,6 +13,8 @@ interface AuthState {
   updateAssistantName: (name: string) => Promise<void>;
   loadPersistedAuth: () => Promise<void>;
   setOnboarded: () => Promise<void>;
+  upgradeToPremium: (productId: string) => Promise<void>;
+  cancelPremium: () => Promise<void>;
 }
 
 const TOKEN_KEY = '@jizhang_token';
@@ -62,5 +64,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setOnboarded: async () => {
     await AsyncStorage.setItem(ONBOARDED_KEY, '1');
     set({ isOnboarded: true });
+  },
+
+  upgradeToPremium: async (productId) => {
+    await subscriptionsApi.mockPurchase(productId);
+    set((state) => ({
+      user: state.user ? { ...state.user, subscriptionTier: 'premium' } : state.user,
+    }));
+  },
+
+  cancelPremium: async () => {
+    await subscriptionsApi.mockCancel();
+    set((state) => ({
+      user: state.user ? { ...state.user, subscriptionTier: 'free' } : state.user,
+    }));
   },
 }));
