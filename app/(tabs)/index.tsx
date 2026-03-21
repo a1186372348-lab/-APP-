@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   StatusBar,
 } from 'react-native';
+import { router } from 'expo-router';
 import { useTransactionStore } from '../../src/store/transactionStore';
 import { useAuthStore } from '../../src/store/authStore';
 import { CategoryBar } from '../../src/components/CategoryBar';
@@ -22,7 +23,7 @@ import AccountingModal from '../accounting-modal';
 import { Transaction } from '../../src/api/client';
 
 export default function HomeScreen() {
-  const { transactions, monthlyStats, currentMonth, isLoading, refresh, fetchTransactions, fetchMonthlyStats } =
+  const { transactions, monthlyStats, currentMonth, isLoading, refresh, fetchTransactions, fetchMonthlyStats, setMonth } =
     useTransactionStore();
   const { user } = useAuthStore();
 
@@ -47,6 +48,24 @@ export default function HomeScreen() {
   const [year, mon] = currentMonth.split('-');
   const monthLabel = `${parseInt(mon)}月`;
 
+  const handlePrevMonth = () => {
+    const d = new Date(parseInt(year), parseInt(mon) - 2, 1);
+    setMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  };
+
+  const handleNextMonth = () => {
+    const now = new Date();
+    const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    if (currentMonth >= thisMonth) return;
+    const d = new Date(parseInt(year), parseInt(mon), 1);
+    setMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  };
+
+  const isCurrentMonth = currentMonth === (() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  })();
+
   return (
     <View style={styles.flex}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFF8F0" />
@@ -59,14 +78,24 @@ export default function HomeScreen() {
         {/* 页头 */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>🐹 智能账本</Text>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/settings')}>
             <Text style={styles.headerRight}>⚙</Text>
           </TouchableOpacity>
         </View>
 
-        {/* 月份 */}
+        {/* 月份切换器 */}
         <View style={styles.monthRow}>
-          <Text style={styles.monthLabel}>{monthLabel}</Text>
+          <TouchableOpacity onPress={handlePrevMonth} style={styles.monthArrow}>
+            <Text style={styles.monthArrowText}>‹</Text>
+          </TouchableOpacity>
+          <Text style={styles.monthLabel}>{year}年{monthLabel}</Text>
+          <TouchableOpacity
+            onPress={handleNextMonth}
+            style={styles.monthArrow}
+            disabled={isCurrentMonth}
+          >
+            <Text style={[styles.monthArrowText, isCurrentMonth && styles.monthArrowDisabled]}>›</Text>
+          </TouchableOpacity>
         </View>
 
         {/* 支出/收入卡片 */}
@@ -197,8 +226,18 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 18, fontWeight: '700', color: '#1A1A1A' },
   headerRight: { fontSize: 22, color: '#888' },
-  monthRow: { paddingHorizontal: 20, paddingBottom: 8 },
-  monthLabel: { fontSize: 15, color: '#888' },
+  monthRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+    gap: 16,
+  },
+  monthArrow: { padding: 4 },
+  monthArrowText: { fontSize: 24, color: '#FF8C42', fontWeight: '600', lineHeight: 28 },
+  monthArrowDisabled: { color: '#DDD' },
+  monthLabel: { fontSize: 16, color: '#3D2B1F', fontWeight: '600', minWidth: 90, textAlign: 'center' },
   summaryRow: {
     flexDirection: 'row',
     marginHorizontal: 16,

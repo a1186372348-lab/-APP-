@@ -12,6 +12,7 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { useAuthStore } from '../src/store/authStore';
 import { authApi } from '../src/api/client';
@@ -74,6 +75,24 @@ export default function OnboardingScreen() {
     }
   };
 
+  const handleWechatLogin = () => {
+    // 微信 OAuth 需要在微信环境内打开，这里引导用户使用微信扫码
+    // 实际接入时替换为真实的微信授权 URL
+    const WX_APP_ID = process.env.EXPO_PUBLIC_WX_APP_ID || '';
+    if (!WX_APP_ID) {
+      Alert.alert('微信登录', '微信登录尚未配置，请使用手机号登录', [
+        { text: '手机号登录', onPress: () => setStep('phone') },
+        { text: '取消', style: 'cancel' },
+      ]);
+      return;
+    }
+    const redirectUri = encodeURIComponent(`${process.env.EXPO_PUBLIC_API_URL}/auth/wechat/callback`);
+    const wxAuthUrl = `https://open.weixin.qq.com/connect/oauth2/authorize?appid=${WX_APP_ID}&redirect_uri=${redirectUri}&response_type=code&scope=snsapi_userinfo&state=login#wechat_redirect`;
+    Linking.openURL(wxAuthUrl).catch(() => {
+      Alert.alert('跳转失败', '请检查微信是否已安装');
+    });
+  };
+
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       {step === 'welcome' && (
@@ -82,7 +101,10 @@ export default function OnboardingScreen() {
           <Text style={styles.mainTitle}>嗯，你终于来了</Text>
           <Text style={styles.subtitle}>我是你的记账仓鼠，以后的账，{'\n'}就交给我来帮你管着吧。</Text>
           <TouchableOpacity style={styles.primaryBtn} onPress={() => setStep('phone')}>
-            <Text style={styles.primaryBtnText}>开始记账</Text>
+            <Text style={styles.primaryBtnText}>手机号登录</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.wechatBtn} onPress={handleWechatLogin}>
+            <Text style={styles.wechatBtnText}>💬 微信快捷登录</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -195,4 +217,13 @@ const styles = StyleSheet.create({
   },
   btnDisabled: { opacity: 0.5 },
   primaryBtnText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  wechatBtn: {
+    width: '100%',
+    backgroundColor: '#07C160',
+    borderRadius: 14,
+    padding: 18,
+    alignItems: 'center',
+    marginTop: -8,
+  },
+  wechatBtnText: { color: '#fff', fontSize: 17, fontWeight: '700' },
 });

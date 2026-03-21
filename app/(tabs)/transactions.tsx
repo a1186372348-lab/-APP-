@@ -1,8 +1,8 @@
 /**
  * 账单列表页
- * 按天分组，月份切换，支持删除
+ * 按天分组，月份切换，点击展开编辑/删除
  */
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -11,18 +11,54 @@ import {
   TouchableOpacity,
   Alert,
   RefreshControl,
+  Modal,
+  TextInput,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useTransactionStore } from '../../src/store/transactionStore';
 import { transactionsApi, Transaction } from '../../src/api/client';
 import { TransactionItem } from '../../src/components/TransactionItem';
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, SYSTEM_CATEGORIES } from '../../src/constants/categories';
 
 export default function TransactionsScreen() {
   const { transactions, monthlyStats, currentMonth, isLoading, setMonth, refresh, removeTransaction } =
     useTransactionStore();
 
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null);
+  const [editAmount, setEditAmount] = useState('');
+  const [editCategoryId, setEditCategoryId] = useState('');
+  const [editNote, setEditNote] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
   const months = generateRecentMonths(6);
 
-  const handleDelete = (tx: Transaction) => {
+  const openEdit = (tx: Transaction) => {
+    setEditingTx(tx);
+    setEditAmount(((tx.amountCents) / 100).toString());
+    setEditCategoryId(tx.categoryId || '');
+    setEditNote(tx.note || '');
+  };
+
+  const handleItemPress = (tx: Transaction) => {
+    Alert.alert(
+      tx.note || tx.merchant || tx.categoryName || '账单',
+      `¥${(tx.amountCents / 100).toFixed(2)}`,
+      [
+        { text: '编辑', onPress: () => openEdit(tx) },
+        {
+          text: '删除',
+          style: 'destructive',
+          onPress: () => confirmDelete(tx),
+        },
+        { text: '取消', style: 'cancel' },
+      ]
+    );
+  };
+
+  const confirmDelete = (tx: Transaction) => {
     Alert.alert(
       '删除账单',
       `确定删除这条 ¥${(tx.amountCents / 100).toFixed(2)} 的记录吗？`,
@@ -40,12 +76,39 @@ export default function TransactionsScreen() {
     );
   };
 
+  const handleSaveEdit = async () => {
+    if (!editingTx) return;
+    const amount = parseFloat(editAmount);
+    if (!editAmount || isNaN(amount) || amount <= 0) {
+      Alert.alert('', '请输入正确的金额');
+      return;
+    }
+    setIsSaving(true);
+    try {
+      await transactionsApi.update(editingTx.id, {
+        amountCents: Math.round(amount * 100),
+        categoryId: editCategoryId || undefined,
+        note: editNote || undefined,
+      });
+      // 刷新列表
+      await refresh();
+      setEditingTx(null);
+    } catch {
+      Alert.alert('保存失败', '请稍后重试');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // 按天分组
   const grouped = groupByDay(transactions);
   const days = Object.keys(grouped).sort().reverse();
 
-  const [year, mon] = currentMonth.split('-');
   const totalExpense = monthlyStats?.totalExpenseCents || 0;
+
+  const allCategories = SYSTEM_CATEGORIES;
+  const editingDirection = editingTx?.direction || 'expense';
+  const categoryOptions = editingDirection === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
 
   return (
     <View style={styles.container}>
@@ -56,7 +119,7 @@ export default function TransactionsScreen() {
       </View>
 
       {/* 月份选择器 */}
-      <View style={styles.monthPicker}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.monthPicker} contentContainerStyle={styles.monthPickerContent}>
         {months.map((m) => (
           <TouchableOpacity
             key={m}
@@ -68,7 +131,7 @@ export default function TransactionsScreen() {
             </Text>
           </TouchableOpacity>
         ))}
-      </View>
+      </ScrollView>
 
       {/* 账单列表 */}
       <FlatList
@@ -92,12 +155,73 @@ export default function TransactionsScreen() {
               <TransactionItem
                 key={tx.id}
                 transaction={tx}
-                onPress={() => handleDelete(tx)}
+                onPress={() => handleItemPress(tx)}
               />
             ))}
           </View>
         )}
       />
+
+      {/* 编辑弹窗 */}
+      <Modal
+        visible={!!editingTx}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setEditingTx(null)}
+      >
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <View style={styles.editContainer}>
+            <View style={styles.editHeader}>
+              <TouchableOpacity onPress={() => setEditingTx(null)}>
+                <Text style={styles.editClose}>取消</Text>
+              </TouchableOpacity>
+              <Text style={styles.editTitle}>编辑账单</Text>
+              <TouchableOpacity onPress={handleSaveEdit} disabled={isSaving}>
+                {isSaving ? (
+                  <ActivityIndicator size="small" color="#FF8C42" />
+                ) : (
+                  <Text style={styles.editSave}>保存</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.editBody} keyboardShouldPersistTaps="handled">
+              <Text style={styles.fieldLabel}>金额</Text>
+              <TextInput
+                style={styles.amountInput}
+                value={editAmount}
+                onChangeText={setEditAmount}
+                keyboardType="decimal-pad"
+                autoFocus
+                placeholder="0.00"
+                placeholderTextColor="#CCC"
+              />
+
+              <Text style={styles.fieldLabel}>分类</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.catScroll}>
+                {categoryOptions.map((cat) => (
+                  <TouchableOpacity
+                    key={cat.id}
+                    style={[styles.catChip, editCategoryId === cat.id && styles.catChipActive]}
+                    onPress={() => setEditCategoryId(cat.id)}
+                  >
+                    <Text style={styles.catChipText}>{cat.icon} {cat.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              <Text style={styles.fieldLabel}>备注（选填）</Text>
+              <TextInput
+                style={styles.noteInput}
+                value={editNote}
+                onChangeText={setEditNote}
+                placeholder="备注..."
+                placeholderTextColor="#CCC"
+              />
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -147,8 +271,8 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 28, fontWeight: '700', color: '#1A1A1A' },
   totalText: { fontSize: 14, color: '#888', paddingBottom: 4 },
-  monthPicker: {
-    flexDirection: 'row',
+  monthPicker: { flexGrow: 0 },
+  monthPickerContent: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     gap: 8,
@@ -186,4 +310,53 @@ const styles = StyleSheet.create({
   daySubtotal: { fontSize: 13, color: '#888' },
   empty: { padding: 60, alignItems: 'center' },
   emptyText: { color: '#BBB', fontSize: 15 },
+  // 编辑弹窗
+  editContainer: { flex: 1, backgroundColor: '#FFF8F0' },
+  editHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    paddingTop: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0EAE0',
+    backgroundColor: '#fff',
+  },
+  editClose: { fontSize: 16, color: '#888' },
+  editTitle: { fontSize: 17, fontWeight: '600', color: '#1A1A1A' },
+  editSave: { fontSize: 16, color: '#FF8C42', fontWeight: '600' },
+  editBody: { flex: 1, padding: 20 },
+  fieldLabel: { fontSize: 14, color: '#3D2B1F', fontWeight: '600', marginBottom: 8, marginTop: 16 },
+  amountInput: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    borderWidth: 1,
+    borderColor: '#F0EAE0',
+    textAlign: 'center',
+  },
+  catScroll: { flexGrow: 0 },
+  catChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#F0EAE0',
+    marginRight: 8,
+  },
+  catChipActive: { backgroundColor: '#FF8C42', borderColor: '#FF8C42' },
+  catChipText: { fontSize: 14, color: '#3D2B1F' },
+  noteInput: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 15,
+    color: '#1A1A1A',
+    borderWidth: 1,
+    borderColor: '#F0EAE0',
+  },
 });
