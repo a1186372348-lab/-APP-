@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import Fastify from 'fastify';
 import fastifyJwt from '@fastify/jwt';
 import fastifyCors from '@fastify/cors';
@@ -56,6 +57,10 @@ const start = async () => {
   try {
     await app.listen({ port, host: '0.0.0.0' });
     console.log(`Server running on port ${port}`);
+
+    // 启动定时任务
+    const { startScheduledJobs } = await import('./scheduler');
+    startScheduledJobs();
   } catch (err) {
     app.log.error(err);
     process.exit(1);

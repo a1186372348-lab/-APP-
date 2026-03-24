@@ -174,6 +174,6 @@ ${isOverBudget ? '注意：用户本月支出接近或超过收入，请减弱�
       { role: 'system', content: TSUNDERE_ANALYST_PROMPT },
       { role: 'user', content: prompt },
     ],
-    { temperature: 0.7, maxTokens: 800 }
+    { model: process.env.DEEPSEEK_REASONER_MODEL || 'deepseek-reasoner', temperature: 0.7, maxTokens: 800 }
   );
 }

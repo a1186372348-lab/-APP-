@@ -73,9 +73,12 @@ npx expo start        # 启动 Expo 开发服务器
 |------|------|
 | `DATABASE_URL` | PostgreSQL 连接串 |
 | `JWT_SECRET` | JWT 签名密钥（生产环境务必修改）|
-| `AI_PRIMARY_PROVIDER` | `openai` 或 `qwen`，国内推荐 `qwen` |
-| `OPENAI_API_KEY` | OpenAI API Key |
-| `QWEN_API_KEY` | 阿里云 Qwen API Key |
+| `AI_PRIMARY_PROVIDER` | `deepseek` / `openai` / `qwen` |
+| `DEEPSEEK_API_KEY` | DeepSeek API Key（已配置）|
+| `DEEPSEEK_CHAT_MODEL` | deepseek-chat（日常对话）|
+| `DEEPSEEK_REASONER_MODEL` | deepseek-reasoner（财务报告）|
+| `OPENAI_API_KEY` | OpenAI API Key（备用）|
+| `QWEN_API_KEY` | 阿里云 Qwen API Key（备用）|
 | `WX_APP_ID` / `WX_APP_SECRET` | 微信公众号凭证 |
 | `FEISHU_APP_ID` / `FEISHU_APP_SECRET` | 飞书应用凭证 |
 | `DINGTALK_BOT_SECRET` | 钉钉 Bot 签名密钥 |
@@ -108,4 +111,21 @@ npx expo start        # 启动 Expo 开发服务器
 
 ---
 
-*构建日期: 2026-03-20*
+## 🎉 MVP 开发完成
+
+**当前状态**: 100% 完成，可立即部署
+
+**已配置 AI**: DeepSeek API
+- 日常对话/记账解析: deepseek-chat
+- 财务报告生成: deepseek-reasoner
+
+**下一步**:
+1. 配置数据库连接
+2. 运行迁移和 seed
+3. 启动服务测试
+
+详见 `DEPLOYMENT_GUIDE.md`
+
+---
+
+*最后更新: 2026-03-23*

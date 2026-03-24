@@ -18,7 +18,8 @@ export interface ChatOptions {
 
 class AiRouter {
   private openai: OpenAI | null = null;
-  private qwen: OpenAI | null = null; // Qwen 兼容 OpenAI SDK 格式
+  private qwen: OpenAI | null = null;
+  private deepseek: OpenAI | null = null;
 
   private getOpenAI(): OpenAI {
     if (!this.openai) {
@@ -39,6 +40,18 @@ class AiRouter {
       });
     }
     return this.qwen;
+  }
+
+  private getDeepSeek(): OpenAI {
+    if (!this.deepseek) {
+      const apiKey = process.env.DEEPSEEK_API_KEY;
+      if (!apiKey) throw new Error('DEEPSEEK_API_KEY not set');
+      this.deepseek = new OpenAI({
+        apiKey,
+        baseURL: process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com',
+      });
+    }
+    return this.deepseek;
   }
 
   /**
@@ -89,6 +102,19 @@ class AiRouter {
       messages,
       temperature: options.temperature ?? 0.3,
       max_tokens: options.maxTokens ?? 1024,
+    } as Parameters<typeof client.chat.completions.create>[0]);
+    return res.choices[0]?.message?.content ?? '';
+  }
+
+  private async chatWithDeepSeek(messages: ChatMessage[], options: ChatOptions): Promise<string> {
+    const client = this.getDeepSeek();
+    const model = options.model || process.env.DEEPSEEK_CHAT_MODEL || 'deepseek-chat';
+    const res = await client.chat.completions.create({
+      model,
+      messages,
+      temperature: options.temperature ?? 0.3,
+      max_tokens: options.maxTokens ?? 1024,
+      response_format: options.responseFormat,
     } as Parameters<typeof client.chat.completions.create>[0]);
     return res.choices[0]?.message?.content ?? '';
   }

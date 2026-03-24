@@ -1,19 +1,27 @@
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { migrate } from 'drizzle-orm/node-postgres/migrator';
+import 'dotenv/config';
 import { Pool } from 'pg';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
 async function runMigrations() {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-  const db = drizzle(pool);
 
-  console.log('Running migrations...');
-  await migrate(db, { migrationsFolder: './src/db/migrations' });
-  console.log('Migrations complete.');
+  try {
+    console.log('Running migrations...');
 
-  await pool.end();
+    const sql = readFileSync(join(__dirname, 'migrations', '0001_init.sql'), 'utf-8');
+    await pool.query(sql);
+
+    console.log('✓ Migrations complete.');
+  } catch (err) {
+    console.error('Migration failed:', err);
+    throw err;
+  } finally {
+    await pool.end();
+  }
 }
 
 runMigrations().catch((err) => {
-  console.error('Migration failed:', err);
+  console.error(err);
   process.exit(1);
 });
